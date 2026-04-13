@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# AI Model Router Config
+config.json
+
+# Local Llama.cpp files (if any)
+*.gguf
+*.bin
+llama-server.exe
+
+# VS Code
+.vscode/
+.history/

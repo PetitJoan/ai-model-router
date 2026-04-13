@@ -1,0 +1,47 @@
+{
+    "base_dir": "C:\\Llama.cpp",
+    "llama_exe_path": "",
+    "router_port": 8080,
+    "backend_port": 8099,
+    "startup_timeout": 120,
+    "profiles": {
+        "architect": {
+            "description": "Large Thinking Model (e.g., 27B-35B) — Architect",
+            "args": [
+                "-m", "models/architect-model.gguf",
+                "-c", "32768",
+                "-ngl", "99",
+                "--flash-attn", "on",
+                "--chat-template-kwargs", "{\"enable_thinking\":true}",
+                "--temp", "0.6"
+            ]
+        },
+        "code": {
+            "description": "Coding Model (e.g., 27B) — Code",
+            "args": [
+                "-m", "models/code-model.gguf",
+                "-c", "32768",
+                "-ngl", "99",
+                "--flash-attn", "on",
+                "--chat-template-kwargs", "{\"enable_thinking\":true}",
+                "--temp", "0.6"
+            ]
+        },
+        "default": {
+            "description": "Small Fast Model (e.g., 9B) — Fallback",
+            "args": [
+                "-m", "models/default-model.gguf",
+                "-c", "32768",
+                "-ngl", "99",
+                "--flash-attn", "on",
+                "--temp", "0.7"
+            ]
+        }
+    },
+    "model_aliases": {
+        "qwen-architect": "architect",
+        "qwen-code": "code",
+        "architect": "architect",
+        "code": "code"
+    }
+}
