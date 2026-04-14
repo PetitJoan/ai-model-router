@@ -113,6 +113,33 @@ The example configurations in this project aren't arbitrary. They are optimized 
 | `--cache-type-k q4_0` | KV Cache Quantization | Reduces VRAM consumption of the context window, allowing for larger models or longer chats. |
 | `--chat-template-kwargs '{"enable_thinking":true}'` | Reasoning Mode | Specifically for Qwen/DeepSeek models to enable the "thinking" process during generation. |
 
+## 💡 Best Practices & Optimization Tips
+
+To get the most out of your local LLMs, follow these community-proven recommendations:
+
+### 1. The Quantization "Sweet Spot"
+Don't use 16-bit or even 8-bit models unless you have massive VRAM. For most use cases:
+*   **Q4_K_M**: The gold standard. Minimal intelligence loss (~0.1-0.2% perplexity) for a 50% reduction in size.
+*   **Q5_K_M / Q6_K**: Use these for reasoning models (Architect mode) if you have the extra VRAM.
+*   **Avoid Q2/Q3**: These models "hallucinate" significantly more, especially in coding tasks.
+
+### 2. Hardware-Specific Recommendations
+
+| VRAM | Recommended Model | Suggested `-ngl` | Context (`-c`) |
+|------|-------------------|------------------|----------------|
+| **8 GB** | 7B - 9B (Q4_K_M) | 40 - 60 | 8k - 16k |
+| **12 GB** | 12B - 14B (Q4_0) | 60 - 80 | 16k - 24k |
+| **16 GB** | 27B (Q3_K_M/Q4_0) | 99 (Full) | 32k |
+| **24 GB+** | 35B+ (Q4_K_M) | 99 (Full) | 32k - 64k |
+
+### 3. Syncing Context with RooCode
+If you set `-c 32768` in your `config.json`, configure RooCode's **Context Window** to **~30,000**. This safety margin prevents the "Context Overflow" errors that can crash the inference or make the model forget the beginning of the chat.
+
+### 4. VRAM Monitoring
+While the router is switching models, keep an eye on your VRAM usage.
+*   **Windows**: Task Manager -> Performance -> GPU -> Dedicated GPU Memory.
+*   **Linux/Windows**: Run `nvidia-smi -l 1` in a separate terminal to see real-time allocation.
+
 ## 🎓 Learning More: Custom Models & Quantization
 
 If you want to move beyond pre-made models and create your own optimized versions:
@@ -132,9 +159,38 @@ The router provides two main internal endpoints:
   - **Load Times**: Last load duration and average load time per model.
   - **Error Tracking**: Counter for timeouts and proxy errors.
 
-## 🔌 RooCode Integration
+## 🔌 Step-by-Step Setup in Roo Code
 
-Configure RooCode to point to the router's port. In your RooCode settings, set the **Base URL** to `http://localhost:8080/v1` and use the profile names (e.g., `architect`, `code`) as the **Model ID**.
+To ensure Roo Code communicates correctly with the Router and takes advantage of dynamic model switching, follow these steps:
+
+### 1. Open Roo Code Settings
+Click the **Gear (Settings)** icon at the bottom of the Roo Code extension panel in VS Code.
+
+### 2. Configure the Provider
+In the settings panel, locate and configure the following fields:
+
+- **Provider**: Select `OpenAI Compatible`.
+- **Base URL**: Enter `http://localhost:8080/v1` (make sure to include the `/v1` at the end).
+- **API Key**: You can enter any text (e.g., `local-router`). The router does not validate it, but Roo Code requires it.
+- **Model ID**: Enter the name of the profile you want to use. **It must exactly match** one of the `model_aliases` defined in your `config.json`.
+    - *Common examples:* `qwen3.5-orchestrator`, `qwen3.5-architect`, `qwen3.5-code`.
+
+### 3. Adjust the Context Window
+- **Max Context Window**: This should match (or be slightly lower than) the `-c` parameter defined in your `config.json` profiles.
+    - *Recommendation:* If the router has `-c 32768`, set it to `30000` in Roo Code to leave a safety margin.
+
+### 4. Use Settings Profiles (Recommended)
+Roo Code allows you to save **Settings Profiles**. We recommend creating one for each main task:
+
+1.  Configure Roo Code for **Architect** mode (using the `qwen3.5-architect` ID).
+2.  Click the profile selector in Roo Code (at the top of the settings) and choose **"Save as new profile..."**.
+3.  Name it something like `Roo-Architect`.
+4.  Repeat the process for `Roo-Code` (using the `qwen3.5-code` ID).
+
+**How does dynamic switching work?**
+When you switch profiles in Roo Code or manually change the "Model ID" in the settings, the Router will detect the change in the next request. If the requested model differs from the one currently loaded, the Router will stop the previous server and automatically load the new one. **You will notice a brief delay in the initial response while the model loads into VRAM.**
+
+---
 
 ## 📝 License
 

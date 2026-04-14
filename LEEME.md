@@ -113,6 +113,33 @@ Las configuraciones de ejemplo en este proyecto no son arbitrarias. Están optim
 | `--cache-type-k q4_0` | Cuantización de Caché KV | Reduce el consumo de VRAM de la ventana de contexto, permitiendo modelos más grandes o chats más largos. |
 | `--chat-template-kwargs '{"enable_thinking":true}'` | Modo Razonamiento | Específico para modelos Qwen/DeepSeek para habilitar el proceso de "pensamiento" durante la generación. |
 
+## 💡 Buenas Prácticas y Consejos de Optimización
+
+Para sacar el máximo provecho de tus LLMs locales, sigue estas recomendaciones probadas por la comunidad:
+
+### 1. El "Punto Dulce" de la Cuantización
+No utilices modelos de 16-bit o incluso 8-bit a menos que tengas muchísima VRAM. Para la mayoría de los casos:
+*   **Q4_K_M**: El estándar de oro. Pérdida de inteligencia mínima (~0.1-0.2% de perplejidad) para una reducción de tamaño del 50%.
+*   **Q5_K_M / Q6_K**: Úsalos para modelos de razonamiento (modo Architect) si tienes VRAM de sobra.
+*   **Evita Q2/Q3**: Estos modelos tienen muchas más "alucinaciones", especialmente en tareas de programación.
+
+### 2. Recomendaciones según tu Hardware
+
+| VRAM | Modelo Recomendado | `-ngl` Sugerido | Contexto (`-c`) |
+|------|--------------------|-----------------|-----------------|
+| **8 GB** | 7B - 9B (Q4_K_M) | 40 - 60 | 8k - 16k |
+| **12 GB** | 12B - 14B (Q4_0) | 60 - 80 | 16k - 24k |
+| **16 GB** | 27B (Q3_K_M/Q4_0) | 99 (Máximo) | 32k |
+| **24 GB+** | 35B+ (Q4_K_M) | 99 (Máximo) | 32k - 64k |
+
+### 3. Sincronización de Contexto con RooCode
+Si configuras `-c 32768` en tu `config.json`, establece en RooCode una **Ventana de Contexto (Context Window)** de unos **30,000**. Este margen de seguridad evita errores de desbordamiento (Context Overflow) que pueden colgar la inferencia o hacer que el modelo olvide el inicio de la conversación.
+
+### 4. Monitoreo de VRAM
+Mientras el router cambia de modelo, vigila el uso de tu VRAM:
+*   **Windows**: Administrador de Tareas -> Rendimiento -> GPU -> Memoria dedicada de la GPU.
+*   **Linux/Windows**: Ejecuta `nvidia-smi -l 1` en una terminal aparte para ver la asignación en tiempo real.
+
 ## 🎓 Aprende Más: Modelos Personalizados y Cuantización
 
 Si quieres ir más allá de los modelos pre-fabricados y crear tus propias versiones optimizadas:
@@ -132,9 +159,38 @@ El router proporciona dos endpoints internos principales:
   - **Tiempos de Carga**: Duración de la última carga y tiempo medio por modelo.
   - **Registro de Errores**: Contador de tiempos de espera (timeouts) y errores de proxy.
 
-## 🔌 Integración con RooCode
+## 🔌 Configuración Paso a Paso en Roo Code
 
-Configura RooCode para apuntar al puerto del router. En los ajustes de RooCode, establece la **Base URL** a `http://localhost:8080/v1` y usa los nombres de los perfiles (ej. `architect`, `code`) como el **ID del Modelo**.
+Para que Roo Code se comunique correctamente con el Router y aproveche el cambio dinámico de modelos, sigue estos pasos:
+
+### 1. Abrir la Configuración de Roo Code
+Haz clic en el icono del **engranaje (Settings)** en la parte inferior de la extensión Roo Code en VS Code.
+
+### 2. Configurar el Proveedor
+En la sección de ajustes, localiza y configura los siguientes campos:
+
+- **Provider**: Selecciona `OpenAI Compatible`.
+- **Base URL**: Introduce `http://localhost:8080/v1` (asegúrate de incluir el `/v1`).
+- **API Key**: Puedes introducir cualquier texto (ej. `local-router`). El router no la valida, pero Roo Code la requiere.
+- **Model ID**: Introduce el nombre del perfil que deseas usar. **Debe coincidir exactamente** con uno de los `model_aliases` definidos en tu `config.json`.
+    - *Ejemplos comunes:* `qwen3.5-orchestrator`, `qwen3.5-architect`, `qwen3.5-code`.
+
+### 3. Ajustar la Ventana de Contexto
+- **Max Context Window**: Debe coincidir (o ser ligeramente inferior) al parámetro `-c` definido en tus perfiles de `config.json`. 
+    - *Recomendación:* Si en el router tienes `-c 32768`, pon `30000` en Roo Code para dejar un margen de seguridad.
+
+### 4. Uso de Perfiles de Configuración (Recomendado)
+Roo Code permite guardar **Settings Profiles**. Te recomendamos crear uno para cada tarea principal:
+
+1.  Configura Roo Code para el modo **Architect** (usando el ID `qwen3.5-architect`).
+2.  Haz clic en el selector de perfiles de Roo Code (arriba de los ajustes) y selecciona **"Save as new profile..."**.
+3.  Ponle un nombre como `Roo-Architect`.
+4.  Repite el proceso para `Roo-Code` (usando el ID `qwen3.5-code`).
+
+**¿Cómo funciona el cambio dinámico?**
+Cuando cambias de perfil en Roo Code o simplemente cambias el "Model ID" en los ajustes, el Router detectará el cambio en la siguiente petición. Si el modelo solicitado es distinto al que está cargado actualmente, el Router detendrá el servidor anterior y cargará el nuevo automáticamente. **Verás un breve retraso en la respuesta inicial mientras el modelo se carga en la VRAM.**
+
+---
 
 ## 📝 Licencia
 
