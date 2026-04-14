@@ -19,3 +19,8 @@ llama-server.exe
 # VS Code
 .vscode/
 .history/
+
+# AI Assistant Metadata (Local only)
+GEMINI.md
+AGENTS.md
+.roo/
